@@ -1,10 +1,10 @@
 package com.example.erick.modules.users.repository;
 
-import org.springframework.data.repository.reactive.ReactiveCrudRepository;
+// Thay đổi gói import từ reactive sang jpa
+import com.example.erick.modules.users.model.User;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.example.erick.modules.users.model.User;
-
 @Repository
-public interface UserRepository extends ReactiveCrudRepository<User, Long> {
+public interface UserRepository extends JpaRepository<User, Long> {
 }

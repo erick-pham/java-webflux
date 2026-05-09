@@ -6,68 +6,80 @@ import com.example.erick.modules.users.dto.request.UserUpdateDTO;
 import com.example.erick.modules.users.dto.response.UserDTO;
 import com.example.erick.modules.users.model.User;
 import com.example.erick.modules.users.repository.UserRepository;
-
+import java.util.List;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
-
-import java.util.Objects;
-
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
-
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
-  private final UserRepository userRepository;
-  private final PortControlClient portControlClient;
+    private final UserRepository userRepository;
+    private final PortControlClient portControlClient;
 
-  public Flux<UserDTO> getAllUsers() {
-    return this.portControlClient.createQuote()
-        .flatMap(apiResponse -> {
-          System.out.println("Response: " + apiResponse);
-          return userRepository.findAll()
-              .map(this::mapToDTO);
-        });
-  }
+    public List<UserDTO> getAllUsers() {
+        // 1. findAll() bây giờ trả về List<User>`
+        List<User> users = userRepository.findAll();
+        String traceId = MDC.get("traceId");
+        log.info("Bắt đầu xử lý với ID: {}", traceId);
 
-  public Mono<UserDTO> getUserById(@NonNull Long id) {
-    return userRepository.findById(id)
-        .map(this::mapToDTO);
-  }
+        this.portControlClient.createQuote();
+        // 2. Sử dụng Java Stream để chuyển đổi từng phần tử
+        return users.stream()
+                .map(this::mapToDTO)
+                .toList(); // Hoặc .collect(Collectors.toList()) tùy phiên bản Java
+    }
 
-  public Mono<UserDTO> createUser(UserCreateDTO userCreateDTO) {
-    User user = User.builder()
-        .username(userCreateDTO.getUsername())
-        .email(userCreateDTO.getEmail())
-        .fullName(userCreateDTO.getFullName())
-        .build();
-    return userRepository.save(Objects.requireNonNull(user))
-        .map(this::mapToDTO);
-  }
+    public UserDTO getUserById(@NonNull Long id) {
+        User existingUser = userRepository
+                .findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+        return this.mapToDTO(existingUser);
+    }
 
-  public Mono<UserDTO> updateUser(@NonNull Long id, UserUpdateDTO userDTO) {
-    return userRepository.findById(id)
-        .flatMap(existingUser -> {
-          existingUser.setEmail(userDTO.getEmail());
-          existingUser.setFullName(userDTO.getFullName());
-          return userRepository.save(existingUser);
-        })
-        .map(this::mapToDTO);
-  }
+    public UserDTO createUser(UserCreateDTO userCreateDTO) {
+        User user = User.builder()
+                .username(userCreateDTO.getUsername())
+                .email(userCreateDTO.getEmail())
+                .fullName(userCreateDTO.getFullName())
+                .build();
+        User savedUser = userRepository.save(user);
 
-  public Mono<Void> deleteUser(@NonNull Long id) {
-    return userRepository.deleteById(id);
-  }
+        // 3. Map ngược lại sang DTO để trả về
+        return this.mapToDTO(savedUser);
+    }
 
-  private UserDTO mapToDTO(User user) {
-    return UserDTO.builder()
-        .id(user.getId())
-        .username(user.getUsername())
-        .email(user.getEmail())
-        .fullName(user.getFullName())
-        .build();
-  }
+    public UserDTO updateUser(@NonNull Long id, UserUpdateDTO userDTO) {
+        // 1. Tìm user (findById trả về Optional thay vì Mono)
+        User existingUser = userRepository
+                .findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+
+        // 2. Cập nhật thông tin
+        existingUser.setEmail(userDTO.getEmail());
+        existingUser.setFullName(userDTO.getFullName());
+
+        // 3. Lưu vào Database (Virtual Thread tự động unmount khi đợi I/O)
+        User updatedUser = userRepository.save(existingUser);
+
+        // 4. Chuyển đổi sang DTO và trả về trực tiếp
+        return this.mapToDTO(updatedUser);
+    }
+
+    public void deleteUser(@NonNull Long id) {
+        userRepository.deleteById(id);
+    }
+
+    private UserDTO mapToDTO(User user) {
+        return UserDTO.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .build();
+    }
 }
