@@ -1,16 +1,21 @@
 package com.example.erick.modules.users.model;
 
-import jakarta.persistence.*; // Sử dụng gói jakarta cho JPA
+import com.example.erick.modules.orders.model.Order;
+import com.example.erick.modules.payments.model.Payment;
+import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
 @Builder
 @Entity // Đổi từ @Table (R2DBC) thành @Entity (JPA)
+@NoArgsConstructor // Bắt buộc phải có cái này cho JPA
+@AllArgsConstructor
 @Table(name = "users") // Chỉ định tên bảng trong Database
 public class User {
 
@@ -28,4 +33,12 @@ public class User {
 
     // Bạn có thể thêm trường này để lưu vết RequestId nếu cần
     private String lastRequestId;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    private List<Order> orders = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    private List<Payment> payments = new ArrayList<>();
 }

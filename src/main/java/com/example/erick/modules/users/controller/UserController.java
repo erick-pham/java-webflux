@@ -3,6 +3,7 @@ package com.example.erick.modules.users.controller;
 import com.example.erick.modules.users.dto.request.UserCreateDTO;
 import com.example.erick.modules.users.dto.request.UserUpdateDTO;
 import com.example.erick.modules.users.dto.response.UserDTO;
+import com.example.erick.modules.users.dto.response.UserDashboardDTO;
 import com.example.erick.modules.users.service.UserService;
 
 import jakarta.validation.Valid;
@@ -27,6 +28,11 @@ public class UserController {
     @GetMapping("/{id}")
     public UserDTO getUserById(@PathVariable Long id) {
         return userService.getUserById(id);
+    }
+
+    @GetMapping("/{id}/dashboard")
+    public UserDashboardDTO getUserDashboard(@PathVariable Long id) {
+        return userService.getUserDashboard(id);
     }
 
     @PostMapping

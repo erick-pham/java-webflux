@@ -36,7 +36,7 @@ public class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        user = new User(1L, "username1", "abc@gmail.com", "John Doe", null);
+        user = User.builder().email("abc@gmail.com").fullName("John Doe").username("username1").build();
         userCreateDTO = UserCreateDTO.builder().fullName("John Doe").build();
         userUpdateDTO = UserUpdateDTO.builder().fullName("John Updated").build();
     }
