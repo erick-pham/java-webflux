@@ -27,7 +27,7 @@ public class UserService {
         String traceId = MDC.get("traceId");
         log.info("Bắt đầu xử lý với ID: {}", traceId);
 
-        this.portControlClient.createQuote();
+        // this.portControlClient.createQuote();
         // 2. Sử dụng Java Stream để chuyển đổi từng phần tử
         return users.stream()
                 .map(this::mapToDTO)
@@ -71,6 +71,9 @@ public class UserService {
     }
 
     public void deleteUser(@NonNull Long id) {
+        if (!userRepository.existsById(id)) {
+            throw new RuntimeException("User not found with id: " + id);
+        }
         userRepository.deleteById(id);
     }
 
