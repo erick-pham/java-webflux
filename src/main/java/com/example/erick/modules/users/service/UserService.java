@@ -6,9 +6,11 @@ import com.example.erick.modules.users.dto.request.UserCreateDTO;
 import com.example.erick.modules.users.dto.request.UserUpdateDTO;
 import com.example.erick.modules.users.dto.response.UserDTO;
 import com.example.erick.modules.users.dto.response.UserDashboardDTO;
-import com.example.erick.modules.users.exception.UserNotFoundException;
 import com.example.erick.modules.users.model.User;
 import com.example.erick.modules.users.repository.UserRepository;
+import com.example.erick.shared.exception.BusinessException;
+import com.example.erick.shared.exception.ErrorCode;
+
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
@@ -31,7 +33,9 @@ public class UserService {
 
     private User getRequiredUser(@NonNull Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException(userId));
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.USER_NOT_FOUND,
+                        "User not found with id: " + userId));
     }
 
     public List<UserDTO> getAllUsers() {
