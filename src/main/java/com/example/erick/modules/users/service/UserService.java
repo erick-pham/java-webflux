@@ -8,6 +8,8 @@ import com.example.erick.modules.users.dto.response.UserDTO;
 import com.example.erick.modules.users.dto.response.UserDashboardDTO;
 import com.example.erick.modules.users.model.User;
 import com.example.erick.modules.users.repository.UserRepository;
+import com.example.erick.shared.context.UserContext;
+import com.example.erick.shared.context.UserRequestDTO;
 import com.example.erick.shared.exception.BusinessException;
 import com.example.erick.shared.exception.ErrorCode;
 
@@ -33,20 +35,17 @@ public class UserService {
 
     private User getRequiredUser(@NonNull Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(
-                        ErrorCode.USER_NOT_FOUND,
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND,
                         "User not found with id: " + userId));
     }
 
     public List<UserDTO> getAllUsers() {
         List<User> users = userRepository.findAll();
         String traceId = MDC.get("traceId");
-        log.info("Bắt đầu xử lý với ID: {}", traceId);
+
 
         // this.portControlClient.createQuote();
-        return users.stream()
-                .map(this::mapToDTO)
-                .toList();
+        return users.stream().map(this::mapToDTO).toList();
     }
 
     public UserDTO getUserById(@NonNull Long id) {
@@ -55,11 +54,8 @@ public class UserService {
     }
 
     public UserDTO createUser(UserCreateDTO userCreateDTO) {
-        User user = User.builder()
-                .username(userCreateDTO.getUsername())
-                .email(userCreateDTO.getEmail())
-                .fullName(userCreateDTO.getFullName())
-                .build();
+        User user = User.builder().username(userCreateDTO.getUsername())
+                .email(userCreateDTO.getEmail()).fullName(userCreateDTO.getFullName()).build();
         User savedUser = userRepository.save(user);
 
         return this.mapToDTO(savedUser);
@@ -77,32 +73,32 @@ public class UserService {
         return this.mapToDTO(updatedUser);
     }
 
-    public void deleteUser(@NonNull Long id) {
-        this.getRequiredUser(id);
-        userRepository.deleteById(id);
+    public void deleteUser(@NonNull Long userId) {
+        if (!userRepository.existsById(userId)) {
+            new BusinessException(ErrorCode.USER_NOT_FOUND, "User not found with id: " + userId);
+        }
+        userRepository.deleteById(userId);
     }
 
     public UserDashboardDTO getUserDashboard(@NonNull Long userId) {
+        UserRequestDTO userContext = UserContext.get();
+        log.info("Bắt đầu xử lý với User Context: {}", userContext);
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 
             Future<User> userFuture = executor.submit(() -> this.getRequiredUser(userId));
 
-            Future<List<Order>> ordersFuture = executor.submit(() -> orderService.getOrderByUserId(userId));
+            Future<List<Order>> ordersFuture =
+                    executor.submit(() -> orderService.getOrderByUserId(userId));
 
             User user = userFuture.get();
             List<Order> orders = ordersFuture.get();
 
-            return UserDashboardDTO.builder()
-                    .id(user.getId())
-                    .username(user.getUsername())
-                    .email(user.getEmail())
-                    .fullName(user.getFullName())
+            return UserDashboardDTO.builder().id(user.getId()).username(user.getUsername())
+                    .email(user.getEmail()).fullName(user.getFullName())
                     .orders(orders.stream()
                             .map(order -> UserDashboardDTO.OrderDashboardDTO.builder()
-                                    .id(order.getId())
-                                    .totalAmount(order.getTotalAmount())
-                                    .status(order.getStatus())
-                                    .description(order.getDescription())
+                                    .id(order.getId()).totalAmount(order.getTotalAmount())
+                                    .status(order.getStatus()).description(order.getDescription())
                                     .build())
                             .toList())
                     .build();
@@ -120,11 +116,7 @@ public class UserService {
     }
 
     private UserDTO mapToDTO(User user) {
-        return UserDTO.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .fullName(user.getFullName())
-                .build();
+        return UserDTO.builder().id(user.getId()).username(user.getUsername())
+                .email(user.getEmail()).fullName(user.getFullName()).build();
     }
 }
